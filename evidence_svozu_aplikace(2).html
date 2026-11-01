@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#263746">
+<title>Evidence svozů – TraSa 64</title>
+<style>
+:root{--ink:#243447;--dark:#263746;--line:#c5ced8;--pale:#eaf0f6;--blue:#dce8f3;--bg:#f4f6f8;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px Arial,sans-serif}
+header{background:var(--dark);color:#fff;padding:18px max(16px,calc((100% - 1100px)/2));}
+h1{font-size:22px;margin:0 0 8px}header p{margin:0;color:#e4eaf0}
+main{max-width:1100px;margin:18px auto;padding:0 12px 30px}
+.panel{background:#fff;border:1px solid #d6dde5;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 2px 8px #1d2d3a0a}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:700}
+input,select,button{font:inherit}input,select{border:1px solid #aebbc8;border-radius:7px;padding:9px;min-width:0;background:#fff;color:#17212b}
+input[type=number]{width:95px}input[type=date]{min-width:150px}
+button{border:0;border-radius:8px;padding:10px 14px;background:var(--dark);color:#fff;font-weight:700;cursor:pointer}
+button.secondary{background:#e8edf2;color:#243447;border:1px solid #c5ced8}
+button.danger{background:#a83232}button.small{padding:7px 9px;font-size:13px}
+button:active{transform:translateY(1px)}
+h2{font-size:18px;margin:0 0 12px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:780px}
+th,td{border:1px solid var(--line);padding:7px;text-align:center;vertical-align:middle}
+th{background:var(--pale);font-size:13px}
+td:first-child{text-align:left;min-width:150px}
+td input{width:100%;padding:8px}
+td .datecell{min-width:145px}
+.total-row{background:var(--pale);font-weight:700}
+.sunday-table{min-width:650px}
+.sunday-table td:first-child{min-width:180px}
+.sunday-table td:nth-child(2){min-width:290px}
+.sunday-table input[type=text]{min-width:100%}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.metric{background:#eef4fa;border:1px solid #d2dfeb;border-radius:9px;padding:12px}
+.metric span{display:block;font-size:12px;color:#536273;margin-bottom:6px}
+.metric strong{font-size:22px}
+.hint{font-size:13px;color:#526273;margin:8px 0 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+footer{font-size:12px;color:#667788;text-align:center;padding:10px}
+@media(max-width:650px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:16px}h1{font-size:20px}.panel{padding:10px}}
+@media print{
+ body{background:#fff;font-size:11px}header{padding:8px 0;background:#fff;color:#000;border-bottom:2px solid #333}
+ header p{color:#333}main{max-width:none;margin:8px 0;padding:0}
+ .panel{box-shadow:none;border:0;padding:5px 0;margin:0 0 8px}
+ .no-print,button,.actions{display:none!important}
+ input,select{border:0!important;padding:2px!important;background:transparent!important;color:#000!important;appearance:none}
+ input[type=number]{width:55px}table{min-width:0;font-size:10px}th,td{padding:4px}
+ .cards{grid-template-columns:repeat(4,1fr);gap:5px}.metric{padding:7px}
+ .metric strong{font-size:16px}
+ h1{font-size:17px}h2{font-size:13px;margin-bottom:5px}
+ @page{size:A4 landscape;margin:10mm}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Evidence svozů – TraSa 64</h1>
+  <p>Řidič: <input id="driver" value="Čeřovský" aria-label="Řidič" style="width:150px;padding:4px"> · Týden: <span id="periodText"></span></p>
+</header>
+<main>
+  <section class="panel no-print">
+    <div class="toolbar">
+      <label>Začátek týdne<input id="weekStart" type="date" value="2026-10-19"></label>
+      <label>Sazba za balík (Kč)<input id="rate" type="number" min="0" step="0.5" value="2"></label>
+      <label>Vybrat uložený týden<select id="weekSelect"></select></label>
+      <button id="newWeek">+ Nový týden</button>
+      <button id="save" class="secondary">Uložit</button>
+    </div>
+    <p class="hint">Můžeš upravovat počty, názvy svozů, částky i data. Změny se ukládají v tomto zařízení.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Balíky během týdne</h2>
+    <div class="table-wrap">
+      <table id="dailyTable">
+        <thead><tr><th>Datum</th><th>Karel Co.</th><th>LPG Směřice</th><th>Karel S.</th><th>Polštáře Černožice</th><th>Balíky celkem</th><th>Odměna</th><th class="no-print">Akce</th></tr></thead>
+        <tbody id="dailyBody"></tbody>
+        <tfoot><tr class="total-row"><td colspan="5">CELKEM ZA TÝDEN</td><td id="weekBags">0</td><td id="weekPay">0 Kč</td><td class="no-print"></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="actions no-print"><button id="addDay" class="secondary">+ Přidat řádek / den</button></div>
+  </section>
+
+  <section class="panel">
+    <h2>Nedělní a další svozy</h2>
+    <div class="table-wrap">
+      <table class="sunday-table">
+        <thead><tr><th>Název svozu</th><th>Adresa / poznámka</th><th>Částka (Kč)</th><th class="no-print">Akce</th></tr></thead>
+        <tbody id="sundayBody"></tbody>
+        <tfoot><tr class="total-row"><td colspan="2">SOUČET SVOZŮ</td><td id="sundayTotal">0 Kč</td><td class="no-print"></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="actions no-print"><button id="addSunday" class="secondary">+ Přidat svoz</button></div>
+  </section>
+
+  <section class="panel">
+    <h2>Souhrn za týden</h2>
+    <div class="cards">
+      <div class="metric"><span>Balíky za týden</span><strong id="sumBags">0</strong></div>
+      <div class="metric"><span>Odměna za balíky</span><strong id="sumParcelPay">0 Kč</strong></div>
+      <div class="metric"><span>Svozy / částky</span><strong id="sumSunday">0 Kč</strong></div>
+      <div class="metric"><span>CELKEM K VÝPLATĚ</span><strong id="grandTotal">0 Kč</strong></div>
+    </div>
+    <p class="hint" id="calculation"></p>
+  </section>
+
+  <section class="panel no-print">
+    <div class="actions">
+      <button id="print">Tisknout / Uložit jako PDF</button>
+      <button id="export" class="secondary">Zálohovat data (JSON)</button>
+      <label class="secondary" style="padding:9px 12px;border:1px solid #c5ced8;border-radius:8px;cursor:pointer">Obnovit zálohu<input id="import" type="file" accept="application/json" style="display:none"></label>
+    </div>
+    <p class="hint">Tisk otevře tiskové okno telefonu nebo počítače. V něm můžeš vybrat tiskárnu nebo „Uložit jako PDF“.</p>
+  </section>
+  <footer>Evidence svozů · TraSa 64</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>Number(n||0).toLocaleString('cs-CZ',{maximumFractionDigits:2})+' Kč';
+const fmtDate=d=>new Date(d+'T12:00:00').toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric'});
+const addDays=(s,n)=>{let d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+const initial={
+ "2026-10-19":{driver:"Čeřovský",rate:2,days:[
+  {date:"2026-10-19",v:[0,0,0,0]},{date:"2026-10-20",v:[0,0,0,0]},
+  {date:"2026-10-21",v:[28,7,0,0]},{date:"2026-10-22",v:[90,0,5,0]},
+  {date:"2026-10-23",v:[72,4,11,3]},{date:"2026-10-24",v:[0,0,0,0]}],
+  sunday:[{name:"Karel – velký Černožice",address:"Černožice",amount:1000},{name:"Pardubice",address:"Štrossova 291, 530 03 Pardubice I; 17. listopadu 2753, Pardubice",amount:1500}]},
+ "2026-10-26":{driver:"Čeřovský",rate:2,days:[
+  {date:"2026-10-26",v:[157,4,8,10]},{date:"2026-10-27",v:[101,3,6,6]},
+  {date:"2026-10-28",v:[91,0,6,0]},{date:"2026-10-29",v:[77,7,12,0]},
+  {date:"2026-10-30",v:[109,8,2,14]},{date:"2026-10-31",v:[0,0,0,0]}],
+  sunday:[{name:"Karel – velký Černožice",address:"Černožice",amount:1000},{name:"Pardubice",address:"Štrossova 291, 530 03 Pardubice I; 17. listopadu 2753, Pardubice",amount:1500}]}
+};
+let store={};
+try{store=JSON.parse(localStorage.getItem('trasa64Evidence')||'{}')}catch(e){}
+store={...initial,...store};
+let current="2026-10-19";
+function weekLabel(start){return fmtDate(start)+' – '+fmtDate(addDays(start,6))}
+function getData(){return store[current]}
+function save(){localStorage.setItem('trasa64Evidence',JSON.stringify(store));refreshSelect()}
+function refreshSelect(){
+ const sel=$('weekSelect'),old=current;sel.innerHTML='';
+ Object.keys(store).sort().forEach(k=>{let o=document.createElement('option');o.value=k;o.textContent=weekLabel(k);sel.append(o)});
+ sel.value=old;
+}
+function loadWeek(key){
+ current=key;
+ if(!store[key])store[key]={driver:$('driver').value||'Čeřovský',rate:2,days:Array.from({length:6},(_,i)=>({date:addDays(key,i),v:[0,0,0,0]})),sunday:[]};
+ const d=getData();$('weekStart').value=current;$('driver').value=d.driver||'Čeřovský';$('rate').value=d.rate??2;
+ render();refreshSelect();
+}
+function render(){
+ const d=getData();$('periodText').textContent=weekLabel(current);
+ const body=$('dailyBody');body.innerHTML='';
+ d.days.forEach((day,i)=>{
+  const tr=document.createElement('tr');
+  const date=document.createElement('td');const inp=document.createElement('input');inp.type='date';inp.className='datecell';inp.value=day.date;
+  inp.onchange=()=>{day.date=inp.value;changed()};date.append(inp);tr.append(date);
+  day.v.forEach((v,j)=>{const td=document.createElement('td'),n=document.createElement('input');n.type='number';n.min='0';n.step='1';n.value=v;n.setAttribute('aria-label','Počet balíků');n.oninput=()=>{day.v[j]=Math.max(0,Number(n.value)||0);changed()};td.append(n);tr.append(td)});
+  const total=document.createElement('td');total.className='rowtotal';tr.append(total);
+  const pay=document.createElement('td');pay.className='rowpay';tr.append(pay);
+  const act=document.createElement('td');act.className='no-print';const del=document.createElement('button');del.className='small danger';del.textContent='Smazat';del.onclick=()=>{d.days.splice(i,1);changed()};act.append(del);tr.append(act);
+  body.append(tr);
+ });
+ const sb=$('sundayBody');sb.innerHTML='';
+ d.sunday.forEach((s,i)=>{
+  const tr=document.createElement('tr');
+  const name=document.createElement('td'),ni=document.createElement('input');ni.value=s.name;ni.type='text';ni.oninput=()=>{s.name=ni.value;changed()};name.append(ni);tr.append(name);
+  const addr=document.createElement('td'),ai=document.createElement('input');ai.value=s.address;ai.type='text';ai.oninput=()=>{s.address=ai.value;changed()};addr.append(ai);tr.append(addr);
+  const amount=document.createElement('td'),am=document.createElement('input');am.type='number';am.min='0';am.step='1';am.value=s.amount;am.oninput=()=>{s.amount=Math.max(0,Number(am.value)||0);changed()};amount.append(am);tr.append(amount);
+  const act=document.createElement('td');act.className='no-print';const del=document.createElement('button');del.className='small danger';del.textContent='Smazat';del.onclick=()=>{d.sunday.splice(i,1);changed()};act.append(del);tr.append(act);sb.append(tr);
+ });
+ updateTotals();
+}
+function updateTotals(){
+ const d=getData(),rate=Number(d.rate)||0;let bags=0;
+ [...$('dailyBody').rows].forEach((tr,i)=>{const n=d.days[i].v.reduce((a,b)=>a+Number(b||0),0);bags+=n;tr.querySelector('.rowtotal').textContent=n;tr.querySelector('.rowpay').textContent=money(n*rate)});
+ const bagPay=bags*rate,sun=d.sunday.reduce((a,s)=>a+Number(s.amount||0),0);
+ $('weekBags').textContent=bags;$('weekPay').textContent=money(bagPay);$('sundayTotal').textContent=money(sun);
+ $('sumBags').textContent=bags;$('sumParcelPay').textContent=money(bagPay);$('sumSunday').textContent=money(sun);$('grandTotal').textContent=money(bagPay+sun);
+ $('calculation').textContent=`${bags} balíků × ${rate} Kč = ${money(bagPay)}; svozy ${money(sun)}; celkem ${money(bagPay+sun)}.`;
+}
+function changed(){const d=getData();d.driver=$('driver').value;d.rate=Number($('rate').value)||0;updateTotals();save()}
+$('weekStart').onchange=()=>{let key=$('weekStart').value;if(!key)return;if(!store[key]){const old=getData();store[key]={driver:old.driver,rate:old.rate,days:Array.from({length:6},(_,i)=>({date:addDays(key,i),v:[0,0,0,0]})),sunday:old.sunday.map(x=>({...x}))}}loadWeek(key);save()};
+$('weekSelect').onchange=e=>loadWeek(e.target.value);
+$('driver').oninput=changed;$('rate').oninput=changed;
+$('newWeek').onclick=()=>{let key=addDays(current,7);while(store[key])key=addDays(key,7);$('weekStart').value=key;loadWeek(key);save()};
+$('addDay').onclick=()=>{let d=getData();let last=d.days.length?d.days[d.days.length-1].date:current;d.days.push({date:addDays(last,1),v:[0,0,0,0]});render();save()};
+$('addSunday').onclick=()=>{getData().sunday.push({name:'Nový svoz',address:'',amount:0});render();save()};
+$('save').onclick=()=>{save();alert('Týden je uložený v tomto zařízení.')};
+$('print').onclick=()=>window.print();
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify(store,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='zalohovani-evidence-svozu.json';a.click();URL.revokeObjectURL(a.href)};
+$('import').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const obj=JSON.parse(await f.text());if(!obj||typeof obj!=='object')throw Error();store=obj;save();loadWeek(Object.keys(store).sort()[0]);alert('Záloha byla obnovena.')}catch(err){alert('Soubor se nepodařilo načíst.')}e.target.value=''};
+loadWeek(current);
+</script>
+</body>
+</html>
