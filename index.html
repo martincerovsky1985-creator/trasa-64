@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#263746">
 <title>Evidence svozů – TraSa 64</title>
- <link rel="icon" type="image/png" href="2195E89A-7413-4538-948C-E962538BF619.png">
-<link rel="apple-touch-icon" href="2195E89A-7413-4538-948C-E962538BF619.png">
 <style>
 :root{--ink:#243447;--dark:#263746;--line:#c5ced8;--pale:#eaf0f6;--blue:#dce8f3;--bg:#f4f6f8;--white:#fff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px Arial,sans-serif}
@@ -78,12 +76,21 @@ footer{font-size:12px;color:#667788;text-align:center;padding:10px}
     <h2>Balíky během týdne</h2>
     <div class="table-wrap">
       <table id="dailyTable">
-        <thead><tr><th>Datum</th><th>Karel Co.</th><th>LPG Směřice</th><th>Karel S.</th><th>Polštáře Černožice</th><th>Balíky celkem</th><th>Odměna</th><th class="no-print">Akce</th></tr></thead>
+        <thead><tr id="dailyHead"><th>Datum</th><th>Balíky celkem</th><th>Odměna</th><th class="no-print">Akce</th></tr></thead>
         <tbody id="dailyBody"></tbody>
-        <tfoot><tr class="total-row"><td colspan="5">CELKEM ZA TÝDEN</td><td id="weekBags">0</td><td id="weekPay">0 Kč</td><td class="no-print"></td></tr></tfoot>
+        <tfoot><tr class="total-row" id="dailyFoot"><td id="dailyFooterLabel">CELKEM ZA TÝDEN</td><td id="weekBags">0</td><td id="weekPay">0 Kč</td><td class="no-print"></td></tr></tfoot>
       </table>
     </div>
     <div class="actions no-print"><button id="addDay" class="secondary">+ Přidat řádek / den</button></div>
+    <div class="panel no-print" style="margin-top:12px;background:#f7f9fb">
+      <h2>Správa zákazníků</h2>
+      <div class="toolbar">
+        <label>Nový zákazník<input id="newCustomerName" type="text" placeholder="Zadej název zákazníka"></label>
+        <button id="addCustomer">+ Přidat zákazníka do tabulky</button>
+      </div>
+      <p class="hint">Nový zákazník se přidá jako další sloupec do všech týdnů. Počty balíků a odměny se budou počítat automaticky.</p>
+      <div id="customerList" class="actions"></div>
+    </div>
   </section>
 
   <section class="panel">
@@ -192,6 +199,27 @@ $('driver').oninput=changed;$('rate').oninput=changed;
 $('newWeek').onclick=()=>{let key=addDays(current,7);while(store[key])key=addDays(key,7);$('weekStart').value=key;loadWeek(key);save()};
 $('addDay').onclick=()=>{let d=getData();let last=d.days.length?d.days[d.days.length-1].date:current;d.days.push({date:addDays(last,1),v:[0,0,0,0]});render();save()};
 $('addSunday').onclick=()=>{getData().sunday.push({name:'Nový svoz',address:'',amount:0});render();save()};
+function renderCustomerList(){
+ const box=$('customerList');box.innerHTML='';
+ customers.forEach((name,i)=>{
+  const item=document.createElement('span');item.style.cssText='display:flex;align-items:center;gap:6px;background:#e8edf2;padding:6px 8px;border-radius:7px';
+  const label=document.createElement('strong');label.textContent=name;item.append(label);
+  if(customers.length>1){const del=document.createElement('button');del.className='small danger';del.textContent='Odebrat';del.onclick=()=>{
+   if(!confirm('Odebrat zákazníka '+name+' ze všech týdnů? Jeho počty budou odstraněny.'))return;
+   customers.splice(i,1);Object.values(store).forEach(w=>(w.days||[]).forEach(day=>day.v.splice(i,1)));
+   persistCustomers();render();renderCustomerList();save();
+  };item.append(del)}
+  box.append(item);
+ });
+}
+$('addCustomer').onclick=()=>{
+ const name=$('newCustomerName').value.trim();
+ if(!name){alert('Zadej název zákazníka.');return}
+ if(customers.some(x=>x.toLocaleLowerCase('cs-CZ')===name.toLocaleLowerCase('cs-CZ'))){alert('Tento zákazník už v tabulce je.');return}
+ customers.push(name);Object.values(store).forEach(w=>(w.days||[]).forEach(day=>day.v.push(0)));
+ persistCustomers();$('newCustomerName').value='';render();renderCustomerList();save();
+};
+$('newCustomerName').addEventListener('keydown',e=>{if(e.key==='Enter')$('addCustomer').click()});
 $('save').onclick=()=>{save();alert('Týden je uložený v tomto zařízení.')};
 $('print').onclick=()=>window.print();
 $('export').onclick=()=>{const blob=new Blob([JSON.stringify(store,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='zalohovani-evidence-svozu.json';a.click();URL.revokeObjectURL(a.href)};
